@@ -25,14 +25,14 @@ main =
         output <- A.pull buffer (C.bytes (D.length concattedInputs)) ($bug "") return
         return (concattedInputs === output)
     ,
-    testProperty "" $ \(inputs :: [Word64]) ->
+    testProperty "Numbers" $ \(inputs :: [Word64]) ->
       unsafePerformIO $ do
         buffer <- A.new 2
         forM_ inputs $ \input -> A.push buffer B.beWord64 input
         outputs <- A.pull buffer (traverse (const C.beWord64) inputs) ($bug "") return
         return (inputs === outputs)
     ,
-    testCase "" $ do
+    testCase "Interleaving" $ do
       let (input1, input2, input3) = (1, 2, 3)
       buffer <- A.new 2
       A.push buffer B.beWord64 input1
@@ -46,3 +46,6 @@ main =
       assertEqual (show output3) input3 output3
   ]
 
+inspect :: A.Buffer -> IO ()
+inspect buffer =
+  print . D.unpack =<< A.getBytes buffer
