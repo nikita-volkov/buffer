@@ -76,18 +76,12 @@ push (Buffer stateIORef) (B.Push space ptrIO) value =
                   let newOccupiedSpace = occupiedSpace + space
                   writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newCapacity)
               else 
-                if occupiedSpace > 0 -- Needs aligning?
-                  then
-                    -- Align
-                    do
-                      withForeignPtr fptr $ \ptr -> do
-                        memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                        ptrIO (plusPtr ptr occupiedSpace) value
-                      writeIORef stateIORef (State fptr 0 (occupiedSpace + space) capacity)
-                  else
-                    do
-                      withForeignPtr fptr (\ptr -> ptrIO ptr value)
-                      writeIORef stateIORef (State fptr 0 space capacity)
+                -- Align
+                do
+                  withForeignPtr fptr $ \ptr -> do
+                    memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                    ptrIO (plusPtr ptr occupiedSpace) value
+                  writeIORef stateIORef (State fptr 0 (occupiedSpace + space) capacity)
 
 pull :: Buffer -> A.Pull pulled -> (Int -> IO interpreted) -> (pulled -> IO interpreted) -> IO interpreted
 pull (Buffer stateIORef) (A.Pull pulledAmount ptrIO) refill succeed =
