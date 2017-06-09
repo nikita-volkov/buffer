@@ -26,6 +26,6 @@ benchOnBuffer name size io =
 
 benchPush name bufferSize factor =
   benchOnBuffer name bufferSize $ 
-  let !bytes = fromString (replicate 100 'a')
+  let !bytes = fromString (replicate 10000 'a')
       !length = D.length bytes
     in \buffer -> replicateM factor $ A.push buffer (C.bytes length) bytes
