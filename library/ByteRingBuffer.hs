@@ -2,14 +2,17 @@ module ByteRingBuffer
 (
   Buffer,
   new,
+  -- * Pushing
   push,
+  pushBytes,
+  pushStorable,
+  -- * Pulling
   pull,
+  pullBytes,
+  pullStorable,
+  -- * Reading
   getBytes,
   getSpace,
-  pushBytes,
-  pullBytes,
-  pushStorable,
-  pullStorable,
 )
 where
 

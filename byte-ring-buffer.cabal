@@ -1,7 +1,7 @@
 name:
   byte-ring-buffer
 version:
-  0.2
+  0.2.0.1
 category:
   Data
 synopsis:
