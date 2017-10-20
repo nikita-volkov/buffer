@@ -44,7 +44,6 @@ library
     ByteRingBuffer.Prelude
   build-depends:
     -- data:
-    ptr-magic >= 0.3.0.1 && < 0.4,
     bytestring >= 0.10 && < 0.11,
     -- errors:
     bug >= 1 && < 2,
@@ -70,7 +69,6 @@ test-suite tests
   build-depends:
     --
     byte-ring-buffer,
-    ptr-magic,
     -- testing:
     tasty == 0.11.*,
     tasty-quickcheck == 0.8.*,
@@ -97,7 +95,6 @@ benchmark benchmarks
     Haskell2010
   build-depends:
     byte-ring-buffer,
-    ptr-magic,
     criterion == 1.1.*,
     bug == 1.*,
     rerebase == 1.*
