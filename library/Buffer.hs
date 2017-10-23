@@ -49,11 +49,10 @@ new capacity =
     return (Buffer stateIORef)
 
 {-|
-Fill the buffer with the specified amount of bytes and the according writing action.
-
+Fills the buffer with the specified amount of bytes using the according writing action on a pointer.
 It is your responsibility to ensure that the action does not exceed the the specified space limit.
 
-Aligns or grows the buffer if required.
+It also aligns or grows the buffer if required.
 -}
 push :: Buffer -> Int -> (Ptr Word8 -> IO ()) -> IO ()
 push (Buffer stateIORef) space ptrIO =
