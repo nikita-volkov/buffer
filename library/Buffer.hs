@@ -41,6 +41,7 @@ data State =
   -}
   State !(ForeignPtr Word8) !Int !Int !Int
 
+{-# INLINE new #-}
 new :: Int -> IO Buffer
 new capacity =
   do
@@ -54,6 +55,7 @@ It is your responsibility to ensure that the action does not exceed the the spec
 
 It also aligns or grows the buffer if required.
 -}
+{-# INLINABLE push #-}
 push :: Buffer -> Int -> (Ptr Word8 -> IO ()) -> IO ()
 push (Buffer stateIORef) space ptrIO =
   do
@@ -122,6 +124,7 @@ pullStorable :: forall storable. (Storable storable) => Buffer -> (Int -> IO sto
 pullStorable buffer =
   pull buffer (sizeOf (undefined :: storable)) (\ptr -> peek (castPtr ptr))
 
+{-# INLINE getSpace #-}
 getSpace :: Buffer -> IO Int
 getSpace (Buffer stateIORef) =
   do
@@ -131,6 +134,7 @@ getSpace (Buffer stateIORef) =
 {-|
 Create a bytestring representation without modifying the buffer.
 -}
+{-# INLINE getBytes #-}
 getBytes :: Buffer -> IO ByteString
 getBytes (Buffer stateIORef) =
   do
