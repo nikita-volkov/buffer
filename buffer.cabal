@@ -5,7 +5,7 @@ version:
 category:
   Data
 synopsis:
-  Mutable ring buffer of bytes
+  Simple low-level buffer for IO
 homepage:
   https://github.com/nikita-volkov/buffer 
 bug-reports:
