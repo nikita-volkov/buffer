@@ -21,14 +21,14 @@ main =
         buffer <- A.new (2 ^ 8)
         forM_ inputs $ \input -> A.pushBytes buffer input
         let concattedInputs = mconcat inputs
-        output <- A.pullBytes buffer (D.length concattedInputs) ($bug "")
+        output <- A.pullBytes buffer (D.length concattedInputs) id ($bug "")
         return (concattedInputs === output)
     ,
     testProperty "Numbers" $ \(inputs :: [Word64]) ->
       unsafePerformIO $ do
         buffer <- A.new 2
         forM_ inputs $ \input -> A.pushStorable buffer input
-        outputs <- (traverse (const (A.pullStorable buffer ($bug ""))) inputs)
+        outputs <- (traverse (const (A.pullStorable buffer id ($bug ""))) inputs)
         return (inputs === outputs)
     ,
     testCase "Interleaving" $ do
@@ -36,10 +36,10 @@ main =
       buffer <- A.new 2
       A.pushStorable buffer input1
       A.pushStorable buffer input2
-      output1 <- A.pullStorable buffer ($bug "")
+      output1 <- A.pullStorable buffer id ($bug "")
       A.pushStorable buffer input3
-      output2 <- A.pullStorable buffer ($bug "")
-      output3 <- A.pullStorable buffer ($bug "")
+      output2 <- A.pullStorable buffer id ($bug "")
+      output3 <- A.pullStorable buffer id ($bug "")
       assertEqual (show output1) input1 output1
       assertEqual (show output2) input2 output2
       assertEqual (show output3) input3 output3

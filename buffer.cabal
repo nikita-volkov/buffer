@@ -5,7 +5,7 @@ version:
 category:
   Data
 synopsis:
-  Simple low-level buffer for IO
+  Simple mutable low-level buffer for IO
 homepage:
   https://github.com/nikita-volkov/buffer 
 bug-reports:

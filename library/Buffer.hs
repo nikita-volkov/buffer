@@ -10,7 +10,7 @@ module Buffer
   pull,
   pullBytes,
   pullStorable,
-  -- * Reading
+  -- * Analysing
   getBytes,
   getSpace,
 )
@@ -29,6 +29,9 @@ foreign import ccall unsafe "memcpy"
   memcpy :: Ptr a {-^ Destination -} -> Ptr a {-^ Source -} -> CSize {-^ Count -} -> IO (Ptr a) {-^ Destination -}
 
 
+{-|
+Mutable buffer.
+-}
 newtype Buffer =
   Buffer (IORef State)
 
@@ -103,7 +106,7 @@ the second action is called instead, given the amount of required bytes missing.
 You should use that action to refill the buffer accordingly and pull again.
 -}
 {-# INLINE pull #-}
-pull :: Buffer -> Int -> (Ptr Word8 -> IO pulled) -> (Int -> IO pulled) -> IO pulled
+pull :: Buffer -> Int -> (Ptr Word8 -> IO result) -> (Int -> IO result) -> IO result
 pull (Buffer stateIORef) pulledAmount ptrIO refill =
   do
     State fptr start end capacity <- readIORef stateIORef
@@ -115,26 +118,54 @@ pull (Buffer stateIORef) pulledAmount ptrIO refill =
         writeIORef stateIORef (State fptr newStart end capacity)
         return pulled
 
+{-|
+Push a byte array into the buffer.
+-}
 {-# INLINE pushBytes #-}
 pushBytes :: Buffer -> ByteString -> IO ()
 pushBytes buffer (C.PS bytesFPtr offset length) =
   push buffer length (\ptr -> withForeignPtr bytesFPtr (\bytesPtr -> C.memcpy ptr (plusPtr bytesPtr offset) length))
 
-{-# INLINE pullBytes #-}
-pullBytes :: Buffer -> Int -> (Int -> IO ByteString) -> IO ByteString
-pullBytes buffer amount =
-  pull buffer amount (\ptr -> C.create amount $ \destPtr -> C.memcpy destPtr ptr amount)
+{-|
+Pulls the specified amount of bytes, converting them into @result@,
+if the buffer contains that amount.
 
+In case the buffer does not contain enough bytes yet,
+the second action is called instead, given the amount of required bytes missing.
+You should use that action to refill the buffer accordingly and pull again.
+-}
+{-# INLINE pullBytes #-}
+pullBytes :: Buffer -> Int -> (ByteString -> result) -> (Int -> IO result) -> IO result
+pullBytes buffer amount bytesResult =
+  pull buffer amount (\ptr -> fmap bytesResult (C.create amount (\destPtr -> C.memcpy destPtr ptr amount)))
+
+{-|
+Push a storable value into the buffer.
+-}
 {-# INLINE pushStorable #-}
 pushStorable :: (Storable storable) => Buffer -> storable -> IO ()
 pushStorable buffer storable =
   push buffer (sizeOf storable) (\ptr -> poke (castPtr ptr) storable)
 
-{-# INLINE pullStorable #-}
-pullStorable :: forall storable. (Storable storable) => Buffer -> (Int -> IO storable) -> IO storable
-pullStorable buffer =
-  pull buffer (sizeOf (undefined :: storable)) (\ptr -> peek (castPtr ptr))
+{-|
+Pulls a storable value, converting it into @result@,
+if the buffer contains enough bytes.
 
+In case the buffer does not contain enough bytes yet,
+the second action is called instead, given the amount of required bytes missing.
+You should use that action to refill the buffer accordingly and pull again.
+-}
+{-# INLINE pullStorable #-}
+pullStorable :: (Storable storable) => Buffer -> (storable -> result) -> (Int -> IO result) -> IO result
+pullStorable buffer storableResult =
+  pull buffer amount (\ptr -> fmap storableResult (peek (castPtr ptr)))
+  where
+    amount =
+      sizeOf ((undefined :: (a -> b) -> a) storableResult)
+
+{-|
+Get how much space is occupied by the buffer's data.
+-}
 {-# INLINE getSpace #-}
 getSpace :: Buffer -> IO Int
 getSpace (Buffer stateIORef) =
