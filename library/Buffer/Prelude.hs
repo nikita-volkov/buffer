@@ -1,4 +1,4 @@
-module ByteRingBuffer.Prelude
+module Buffer.Prelude
 (
   module Exports,
   forMToZero_,

@@ -3,7 +3,7 @@ module Main where
 import Prelude
 import Bug
 import Criterion.Main
-import qualified ByteRingBuffer as A
+import qualified Buffer as A
 import qualified Data.ByteString as D
 
 

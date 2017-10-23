@@ -1,4 +1,4 @@
-module ByteRingBuffer
+module Buffer
 (
   Buffer,
   new,
@@ -16,7 +16,7 @@ module ByteRingBuffer
 )
 where
 
-import ByteRingBuffer.Prelude hiding (State, Buffer)
+import Buffer.Prelude hiding (State, Buffer)
 import Foreign.C
 import qualified Data.ByteString.Internal as C
 

@@ -7,7 +7,7 @@ import Test.Tasty.Runners
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Test.QuickCheck.Instances
-import qualified ByteRingBuffer as A
+import qualified Buffer as A
 import qualified Data.ByteString as D
 import qualified Data.ByteString.Internal as B
 
