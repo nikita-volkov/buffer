@@ -90,6 +90,7 @@ push (Buffer stateIORef) space ptrIO =
                     ptrIO (plusPtr ptr occupiedSpace)
                   writeIORef stateIORef (State fptr 0 (occupiedSpace + space) capacity)
 
+{-# INLINE pull #-}
 pull :: Buffer -> Int -> (Ptr Word8 -> IO pulled) -> (Int -> IO pulled) -> IO pulled
 pull (Buffer stateIORef) pulledAmount ptrIO refill =
   do
