@@ -57,7 +57,7 @@ new capacity =
 
 {-|
 Fills the buffer with the specified amount of bytes using the according writing action on a pointer.
-It is your responsibility to ensure that the action does not exceed the the specified space limit.
+It is your responsibility to ensure that the action does not exceed the specified space limit.
 
 It also aligns or grows the buffer if required.
 -}
