@@ -41,6 +41,9 @@ data State =
   -}
   State !(ForeignPtr Word8) !Int !Int !Int
 
+{-|
+Create a new buffer of the specified initial capacity.
+-}
 {-# INLINE new #-}
 new :: Int -> IO Buffer
 new capacity =
@@ -91,6 +94,14 @@ push (Buffer stateIORef) space ptrIO =
                     ptrIO (plusPtr ptr occupiedSpace)
                   writeIORef stateIORef (State fptr 0 (occupiedSpace + space) capacity)
 
+{-|
+Pulls the specified amount of bytes from the buffer using the provided pointer-action,
+freeing the buffer from the pulled bytes afterwards.
+
+In case the buffer does not contain enough bytes yet,
+the second action is called instead, given the amount of required bytes missing.
+You should use that action to refill the buffer accordingly and pull again.
+-}
 {-# INLINE pull #-}
 pull :: Buffer -> Int -> (Ptr Word8 -> IO pulled) -> (Int -> IO pulled) -> IO pulled
 pull (Buffer stateIORef) pulledAmount ptrIO refill =
