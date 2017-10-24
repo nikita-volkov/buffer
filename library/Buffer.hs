@@ -66,7 +66,7 @@ That amount then is used to move the buffer's cursor accordingly.
 It also aligns or grows the buffer if required.
 -}
 {-# INLINABLE push #-}
-push :: Buffer -> Int -> (Ptr Word8 -> IO Int) -> IO ()
+push :: Buffer -> Int -> (Ptr Word8 -> IO (Int, output)) -> IO output
 push (Buffer stateIORef) space ptrIO =
   do
     State fptr start end capacity <- readIORef stateIORef
@@ -78,8 +78,9 @@ push (Buffer stateIORef) space ptrIO =
         if capacityDelta <= 0 -- Doesn't need more space?
           then 
             do
-              actualSpace <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
+              (actualSpace, output) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
               writeIORef stateIORef (State fptr start (end + actualSpace) capacity)
+              return output
           else 
             if capacityDelta > start -- Needs growing?
               then
@@ -87,19 +88,21 @@ push (Buffer stateIORef) space ptrIO =
                 do
                   let newCapacity = occupiedSpace + space
                   newFPtr <- mallocForeignPtrBytes newCapacity
-                  actualSpace <- withForeignPtr newFPtr $ \newPtr -> do
+                  (actualSpace, output) <- withForeignPtr newFPtr $ \newPtr -> do
                     withForeignPtr fptr $ \ptr -> do
                       memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
                     ptrIO (plusPtr newPtr occupiedSpace)
                   let newOccupiedSpace = occupiedSpace + actualSpace
                   writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newCapacity)
+                  return output
               else 
                 -- Align
                 do
-                  actualSpace <- withForeignPtr fptr $ \ptr -> do
+                  (actualSpace, output) <- withForeignPtr fptr $ \ptr -> do
                     memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
                     ptrIO (plusPtr ptr occupiedSpace)
                   writeIORef stateIORef (State fptr 0 (occupiedSpace + actualSpace) capacity)
+                  return output
 
 {-|
 Pulls the specified amount of bytes from the buffer using the provided pointer-action,
@@ -130,7 +133,7 @@ pushBytes :: Buffer -> ByteString -> IO ()
 pushBytes buffer (C.PS bytesFPtr offset length) =
   push buffer length $ \ptr ->
   withForeignPtr bytesFPtr $ \bytesPtr ->
-  C.memcpy ptr (plusPtr bytesPtr offset) length $> length
+  C.memcpy ptr (plusPtr bytesPtr offset) length $> (length, ())
 
 {-|
 Pulls the specified amount of bytes, converting them into @result@,
@@ -151,7 +154,7 @@ Push a storable value into the buffer.
 {-# INLINE pushStorable #-}
 pushStorable :: (Storable storable) => Buffer -> storable -> IO ()
 pushStorable buffer storable =
-  push buffer amount (\ptr -> poke (castPtr ptr) storable $> amount)
+  push buffer amount (\ptr -> poke (castPtr ptr) storable $> (amount, ()))
   where
     amount = sizeOf storable
 
