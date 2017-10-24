@@ -60,13 +60,14 @@ Prepares the buffer to be filled with at maximum the specified amount of bytes,
 then uses the pointer-action to populate it.
 It is your responsibility to ensure that the action does not exceed the space limit.
 
-The pointer-action returns the amount of bytes it actually wrote to the buffer.
+The pointer-action returns the amount of bytes it actually writes to the buffer.
 That amount then is used to move the buffer's cursor accordingly.
+It can also produce some @result@, which will then be emitted by @push@.
 
 It also aligns or grows the buffer if required.
 -}
 {-# INLINABLE push #-}
-push :: Buffer -> Int -> (Ptr Word8 -> IO (Int, output)) -> IO output
+push :: Buffer -> Int -> (Ptr Word8 -> IO (Int, result)) -> IO result
 push (Buffer stateIORef) space ptrIO =
   do
     State fptr start end capacity <- readIORef stateIORef
