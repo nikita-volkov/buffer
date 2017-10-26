@@ -121,8 +121,8 @@ pull (Buffer stateIORef) pulledAmount ptrIO refill =
     let newStart = start + pulledAmount
     if newStart > end
       then refill (newStart - end)
-      else withForeignPtr fptr $ \ptr -> do
-        pulled <- ptrIO (plusPtr ptr start)
+      else do
+        pulled <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr start)
         writeIORef stateIORef (State fptr newStart end capacity)
         return pulled
 
