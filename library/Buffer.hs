@@ -42,7 +42,7 @@ data State =
   * End offset
   * Max amount
   -}
-  State !(ForeignPtr Word8) !Int !Int !Int
+  State {-# UNPACK #-} !(ForeignPtr Word8) {-# UNPACK #-} !Int {-# UNPACK #-} !Int {-# UNPACK #-} !Int
 
 {-|
 Create a new buffer of the specified initial capacity.
