@@ -69,6 +69,7 @@ It also aligns or grows the buffer if required.
 {-# INLINABLE push #-}
 push :: Buffer -> Int -> (Ptr Word8 -> IO (Int, result)) -> IO result
 push (Buffer stateIORef) space ptrIO =
+  {-# SCC "push" #-} 
   do
     State fptr start end capacity <- readIORef stateIORef
     let
@@ -116,6 +117,7 @@ You should use that action to refill the buffer accordingly and pull again.
 {-# INLINE pull #-}
 pull :: Buffer -> Int -> (Ptr Word8 -> IO result) -> (Int -> IO result) -> IO result
 pull (Buffer stateIORef) pulledAmount ptrIO refill =
+  {-# SCC "pull" #-} 
   do
     State fptr start end capacity <- readIORef stateIORef
     let newStart = start + pulledAmount
@@ -181,6 +183,7 @@ Get how much space is occupied by the buffer's data.
 {-# INLINE getSpace #-}
 getSpace :: Buffer -> IO Int
 getSpace (Buffer stateIORef) =
+  {-# SCC "getSpace" #-} 
   do
     State fptr start end capacity <- readIORef stateIORef
     return (end - start)
