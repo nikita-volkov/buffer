@@ -186,7 +186,7 @@ getSpace (Buffer stateIORef) =
   {-# SCC "getSpace" #-} 
   do
     State fptr start end capacity <- readIORef stateIORef
-    return (end - start)
+    return $! end - start
 
 {-|
 Create a bytestring representation without modifying the buffer.
