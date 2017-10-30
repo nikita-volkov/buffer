@@ -73,37 +73,37 @@ push (Buffer stateIORef) space ptrIO =
   do
     State fptr start end capacity <- readIORef stateIORef
     let
-      remainingSpace = capacity - end
-      capacityDelta = space - remainingSpace
-      occupiedSpace = end - start
+      !remainingSpace = capacity - end
+      !capacityDelta = space - remainingSpace
+      !occupiedSpace = end - start
       in 
         if capacityDelta <= 0 -- Doesn't need more space?
           then 
             do
-              (actualSpace, output) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
-              writeIORef stateIORef (State fptr start (end + actualSpace) capacity)
+              (!actualSpace, !output) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
+              writeIORef stateIORef $! State fptr start (end + actualSpace) capacity
               return output
           else 
             if capacityDelta > start -- Needs growing?
               then
                 -- Grow
                 do
-                  let newCapacity = occupiedSpace + space
+                  let !newCapacity = occupiedSpace + space
                   newFPtr <- mallocForeignPtrBytes newCapacity
-                  (actualSpace, output) <- withForeignPtr newFPtr $ \newPtr -> do
+                  (!actualSpace, !output) <- withForeignPtr newFPtr $ \newPtr -> do
                     withForeignPtr fptr $ \ptr -> do
                       memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
                     ptrIO (plusPtr newPtr occupiedSpace)
-                  let newOccupiedSpace = occupiedSpace + actualSpace
-                  writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newCapacity)
+                  let !newOccupiedSpace = occupiedSpace + actualSpace
+                  writeIORef stateIORef $! State newFPtr 0 newOccupiedSpace newCapacity
                   return output
               else 
                 -- Align
                 do
-                  (actualSpace, output) <- withForeignPtr fptr $ \ptr -> do
+                  (!actualSpace, !output) <- withForeignPtr fptr $ \ptr -> do
                     memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
                     ptrIO (plusPtr ptr occupiedSpace)
-                  writeIORef stateIORef (State fptr 0 (occupiedSpace + actualSpace) capacity)
+                  writeIORef stateIORef $! State fptr 0 (occupiedSpace + actualSpace) capacity
                   return output
 
 {-|
@@ -120,12 +120,12 @@ pull (Buffer stateIORef) pulledAmount ptrIO refill =
   {-# SCC "pull" #-} 
   do
     State fptr start end capacity <- readIORef stateIORef
-    let newStart = start + pulledAmount
+    let !newStart = start + pulledAmount
     if newStart > end
-      then refill (newStart - end)
+      then refill $! newStart - end
       else do
-        pulled <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr start)
-        writeIORef stateIORef (State fptr newStart end capacity)
+        !pulled <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr start)
+        writeIORef stateIORef $! State fptr newStart end capacity
         return pulled
 
 {-|
