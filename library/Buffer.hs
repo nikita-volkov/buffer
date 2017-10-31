@@ -32,17 +32,14 @@ foreign import ccall unsafe "memcpy"
 {-|
 Mutable buffer.
 -}
-newtype Buffer =
-  Buffer (IORef State)
-
-data State =
+data Buffer =
   {-|
   * Buffer pointer
   * Start offset
   * End offset
-  * Max amount
+  * Capacity
   -}
-  State {-# UNPACK #-} !(ForeignPtr Word8) {-# UNPACK #-} !Int {-# UNPACK #-} !Int {-# UNPACK #-} !Int
+  Buffer !(IORef (ForeignPtr Word8)) !(IORef Int) !(IORef Int) !(IORef Int)
 
 {-|
 Create a new buffer of the specified initial capacity.
@@ -52,8 +49,7 @@ new :: Int -> IO Buffer
 new capacity =
   do
     fptr <- mallocForeignPtrBytes capacity
-    stateIORef <- newIORef (State fptr 0 0 capacity)
-    return (Buffer stateIORef)
+    Buffer <$> newIORef fptr <*> newIORef 0 <*> newIORef 0 <*> newIORef capacity
 
 {-|
 Prepares the buffer to be filled with at maximum the specified amount of bytes,
@@ -68,43 +64,49 @@ It also aligns or grows the buffer if required.
 -}
 {-# INLINABLE push #-}
 push :: Buffer -> Int -> (Ptr Word8 -> IO (Int, result)) -> IO result
-push (Buffer stateIORef) space ptrIO =
+push (Buffer fptrVar startVar endVar capacityVar) space ptrIO =
   {-# SCC "push" #-} 
   do
-    State fptr start end capacity <- readIORef stateIORef
+    fptr <- readIORef fptrVar
+    end <- readIORef endVar
+    capacity <- readIORef capacityVar
     let
-      !remainingSpace = capacity - end
-      !capacityDelta = space - remainingSpace
-      !occupiedSpace = end - start
+      capacityDelta = end + space - capacity
       in 
         if capacityDelta <= 0 -- Doesn't need more space?
           then 
             do
               (!actualSpace, !output) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
-              writeIORef stateIORef $! State fptr start (end + actualSpace) capacity
+              writeIORef endVar $! end + actualSpace
               return output
           else 
-            if capacityDelta > start -- Needs growing?
-              then
-                -- Grow
-                do
-                  let !newCapacity = occupiedSpace + space
-                  newFPtr <- mallocForeignPtrBytes newCapacity
-                  (!actualSpace, !output) <- withForeignPtr newFPtr $ \newPtr -> do
-                    withForeignPtr fptr $ \ptr -> do
-                      memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                    ptrIO (plusPtr newPtr occupiedSpace)
-                  let !newOccupiedSpace = occupiedSpace + actualSpace
-                  writeIORef stateIORef $! State newFPtr 0 newOccupiedSpace newCapacity
-                  return output
-              else 
-                -- Align
-                do
-                  (!actualSpace, !output) <- withForeignPtr fptr $ \ptr -> do
-                    memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                    ptrIO (plusPtr ptr occupiedSpace)
-                  writeIORef stateIORef $! State fptr 0 (occupiedSpace + actualSpace) capacity
-                  return output
+            do
+              start <- readIORef startVar
+              let !occupiedSpace = end - start
+              if capacityDelta > start -- Needs growing?
+                then
+                  -- Grow
+                  do
+                    let !newCapacity = occupiedSpace + space
+                    newFPtr <- mallocForeignPtrBytes newCapacity
+                    (!actualSpace, !output) <- withForeignPtr newFPtr $ \newPtr -> do
+                      withForeignPtr fptr $ \ptr -> do
+                        memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                      ptrIO (plusPtr newPtr occupiedSpace)
+                    writeIORef fptrVar newFPtr
+                    writeIORef startVar 0
+                    writeIORef endVar $! occupiedSpace + actualSpace
+                    writeIORef capacityVar newCapacity
+                    return output
+                else 
+                  -- Align
+                  do
+                    (!actualSpace, !output) <- withForeignPtr fptr $ \ptr -> do
+                      memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                      ptrIO (plusPtr ptr occupiedSpace)
+                    writeIORef startVar 0
+                    writeIORef endVar $! occupiedSpace + actualSpace
+                    return output
 
 {-|
 Pulls the specified amount of bytes from the buffer using the provided pointer-action,
@@ -116,16 +118,18 @@ You should use that action to refill the buffer accordingly and pull again.
 -}
 {-# INLINE pull #-}
 pull :: Buffer -> Int -> (Ptr Word8 -> IO result) -> (Int -> IO result) -> IO result
-pull (Buffer stateIORef) pulledAmount ptrIO refill =
+pull (Buffer fptrVar startVar endVar capacityVar) pulledAmount ptrIO refill =
   {-# SCC "pull" #-} 
   do
-    State fptr start end capacity <- readIORef stateIORef
+    start <- readIORef startVar
+    end <- readIORef endVar
     let !newStart = start + pulledAmount
     if newStart > end
       then refill $! newStart - end
       else do
+        fptr <- readIORef fptrVar
         !pulled <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr start)
-        writeIORef stateIORef $! State fptr newStart end capacity
+        writeIORef startVar newStart
         return pulled
 
 {-|
@@ -182,19 +186,22 @@ Get how much space is occupied by the buffer's data.
 -}
 {-# INLINE getSpace #-}
 getSpace :: Buffer -> IO Int
-getSpace (Buffer stateIORef) =
+getSpace (Buffer fptrVar startVar endVar capacityVar) =
   {-# SCC "getSpace" #-} 
   do
-    State fptr start end capacity <- readIORef stateIORef
-    return $! end - start
+    end <- readIORef endVar
+    start <- readIORef startVar
+    return (end - start)
 
 {-|
 Create a bytestring representation without modifying the buffer.
 -}
 {-# INLINE getBytes #-}
 getBytes :: Buffer -> IO ByteString
-getBytes (Buffer stateIORef) =
+getBytes (Buffer fptrVar startVar endVar capacityVar) =
   do
-    State fptr start end capacity <- readIORef stateIORef
+    start <- readIORef startVar
+    end <- readIORef endVar
     let size = end - start
+    fptr <- readIORef fptrVar
     withForeignPtr fptr $ \ptr -> C.create size $ \destPtr -> C.memcpy destPtr ptr size
