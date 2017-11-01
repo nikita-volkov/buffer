@@ -197,4 +197,4 @@ getBytes (Buffer stateIORef) =
   do
     State fptr start end capacity <- readIORef stateIORef
     let size = end - start
-    withForeignPtr fptr $ \ptr -> C.create size $ \destPtr -> C.memcpy destPtr ptr size
+    withForeignPtr fptr $ \ptr -> C.create size $ \destPtr -> C.memcpy destPtr (plusPtr ptr start) size
